@@ -244,7 +244,7 @@ export default function TaxBills() {
                 <tr
                   key={group.boxNumber}
                   className={`cursor-pointer border-l-4 hover:bg-slate-50 ${
-                    hasPendingConfirmation ? 'border-amber-400' : 'border-transparent'
+                    hasPendingConfirmation ? 'border-l-amber-400' : 'border-l-transparent'
                   }`}
                   onClick={() => setViewingBoxNumber(group.boxNumber)}
                 >

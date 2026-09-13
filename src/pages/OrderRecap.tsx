@@ -431,7 +431,7 @@ export default function OrderRecap() {
                   >
                     <td
                       className={`border-l-4 px-4 py-3 ${
-                        hasPendingConfirmation ? 'border-amber-400' : 'border-transparent'
+                        hasPendingConfirmation ? 'border-l-amber-400' : 'border-l-transparent'
                       }`}
                     >
                       <input
