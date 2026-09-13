@@ -13,17 +13,18 @@ import { StatusBadge } from './StatusBadge'
 import { TrashIcon } from './TrashIcon'
 
 export function TaxBoxDetailDialog({
-  boxNumber,
+  boxId,
   onClose,
 }: {
-  boxNumber: string
+  boxId: string
   onClose: () => void
 }) {
   const allTaxBills = useStore((s) => s.taxBills)
   const allItems = useStore((s) => s.items)
   const allBatches = useStore((s) => s.batches)
-  const taxBills = allTaxBills.filter((t) => t.boxNumber === boxNumber)
+  const taxBills = allTaxBills.filter((t) => t.boxId === boxId)
   const getCustomerName = useStore((s) => s.getCustomerName)
+  const boxNumber = useStore((s) => s.getBoxNumber(boxId))
   const confirmTaxBill = useStore((s) => s.confirmTaxBill)
   const rejectTaxBill = useStore((s) => s.rejectTaxBill)
   const simulateCustomerUploadTax = useStore((s) => s.simulateCustomerUploadTax)
@@ -61,7 +62,7 @@ export function TaxBoxDetailDialog({
   // Every batch under one box shares a single payment deadline.
   const boxDeadline = taxBills[0].deadline
   const boxBatchNumbers = Array.from(
-    new Set(allBatches.filter((b) => b.boxNumber === boxNumber).map((b) => b.batchNumber)),
+    new Set(allBatches.filter((b) => b.boxId === boxId).map((b) => b.batchNumber)),
   ).sort()
 
   const tagihanText = buildTaxTagihanTemplate({
@@ -118,7 +119,7 @@ export function TaxBoxDetailDialog({
   function saveDeadline() {
     if (deadlineDraft) {
       const existingTime = boxDeadline.slice(11)
-      updateBoxDeadline(boxNumber, new Date(`${deadlineDraft}T${existingTime}`).toISOString())
+      updateBoxDeadline(boxId, new Date(`${deadlineDraft}T${existingTime}`).toISOString())
     }
     setEditingDeadline(false)
   }

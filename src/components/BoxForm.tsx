@@ -36,9 +36,7 @@ export function BoxForm({
 
   // A batch can only be in one box at a time — offer batches with no box
   // yet, plus whatever is already in the box being edited.
-  const choosableBatches = batches.filter(
-    (b) => !b.boxNumber || b.boxNumber === initial?.boxNumber,
-  )
+  const choosableBatches = batches.filter((b) => !b.boxId || b.boxId === initial?.id)
 
   function toggleBatch(batchId: string) {
     setSelectedBatchIds((set) => {

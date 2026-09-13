@@ -22,11 +22,11 @@ export function TaxCalculationForm({
   onPublish,
   onCancel,
 }: {
-  boxOptions: string[]
-  itemsByBox: (boxNumber: string) => Item[]
+  boxOptions: Array<{ id: string; boxNumber: string }>
+  itemsByBox: (boxId: string) => Item[]
   customers: Customer[]
-  alreadyPublishedCustomerIds: (boxNumber: string) => Set<string>
-  boxDeadlineFor: (boxNumber: string) => string | undefined
+  alreadyPublishedCustomerIds: (boxId: string) => Set<string>
+  boxDeadlineFor: (boxId: string) => string | undefined
   onSaveWeights: (weights: Array<{ itemId: string; weightGrams: number }>) => void
   onPublish: (
     bills: Array<
@@ -36,15 +36,15 @@ export function TaxCalculationForm({
   ) => void
   onCancel: () => void
 }) {
-  const [boxNumber, setBoxNumber] = useState('')
+  const [boxId, setBoxId] = useState('')
   const [totalTax, setTotalTax] = useState<number>(0)
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [deadlineDate, setDeadlineDate] = useState(suggestedDeadlineDate())
   const [existingDeadlineIso, setExistingDeadlineIso] = useState<string | null>(null)
   const [dialog, setDialog] = useState<{ tone: 'success' | 'error'; message: string } | null>(null)
 
-  const boxItems = boxNumber ? itemsByBox(boxNumber) : []
-  const alreadyPublished = boxNumber ? alreadyPublishedCustomerIds(boxNumber) : new Set<string>()
+  const boxItems = boxId ? itemsByBox(boxId) : []
+  const alreadyPublished = boxId ? alreadyPublishedCustomerIds(boxId) : new Set<string>()
   const eligibleItems = boxItems.filter((i) => !alreadyPublished.has(i.customerId))
   const nonKartuItems = eligibleItems.filter((i) => i.tipeBarang !== 'Kartu')
 
@@ -52,12 +52,12 @@ export function TaxCalculationForm({
   // switch the picker to that existing deadline instead of the +7-day
   // suggestion, since publishing more customers into it must share it.
   useEffect(() => {
-    if (!boxNumber) return
-    const existing = boxDeadlineFor(boxNumber) ?? null
+    if (!boxId) return
+    const existing = boxDeadlineFor(boxId) ?? null
     setExistingDeadlineIso(existing)
     if (existing) setDeadlineDate(existing.slice(0, 10))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boxNumber])
+  }, [boxId])
 
   function getCustomerName(id: string) {
     return customers.find((c) => c.id === id)?.name ?? 'Unknown'
@@ -77,7 +77,7 @@ export function TaxCalculationForm({
 
   function handlePublish() {
     const fail = (message: string) => setDialog({ tone: 'error', message })
-    if (!boxNumber) return fail('Pilih box terlebih dahulu.')
+    if (!boxId) return fail('Pilih box terlebih dahulu.')
     if (!deadlineDate) return fail('Pilih deadline pembayaran.')
     if (totalTax <= 0) return fail('Total tax box harus lebih dari 0.')
     if (nonKartuItems.some((i) => !(weights[i.id] ?? i.weightGrams))) {
@@ -105,7 +105,7 @@ export function TaxCalculationForm({
       )
       onPublish(
         result.breakdown.map((b) => ({
-          boxNumber,
+          boxId,
           customerId: b.customerId,
           itemIds: eligibleItems.filter((i) => i.customerId === b.customerId).map((i) => i.id),
           kartuCount: b.kartuCount,
@@ -135,13 +135,13 @@ export function TaxCalculationForm({
           <label className="mb-1 block text-sm font-medium text-slate-700">Box Number</label>
           <select
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            value={boxNumber}
-            onChange={(e) => setBoxNumber(e.target.value)}
+            value={boxId}
+            onChange={(e) => setBoxId(e.target.value)}
           >
             <option value="">Pilih box…</option>
             {boxOptions.map((b) => (
-              <option key={b} value={b}>
-                {b}
+              <option key={b.id} value={b.id}>
+                {b.boxNumber}
               </option>
             ))}
           </select>
@@ -164,7 +164,7 @@ export function TaxCalculationForm({
             value={deadlineDate}
             onChange={(e) => setDeadlineDate(e.target.value)}
           />
-          {boxNumber && existingDeadlineIso && (
+          {boxId && existingDeadlineIso && (
             <p className="mt-1 text-xs text-slate-400">
               Box ini sudah punya deadline — ubah di sini akan menerapkannya ke semua tagihan di box ini.
             </p>
@@ -172,14 +172,14 @@ export function TaxCalculationForm({
         </div>
       </div>
 
-      {boxNumber && alreadyPublished.size > 0 && (
+      {boxId && alreadyPublished.size > 0 && (
         <p className="text-xs text-slate-400">
           {alreadyPublished.size} customer pada box ini sudah memiliki tagihan pajak dan tidak akan
           dipublikasikan ulang.
         </p>
       )}
 
-      {boxNumber && nonKartuItems.length > 0 && (
+      {boxId && nonKartuItems.length > 0 && (
         <div className="rounded-lg border border-slate-200 p-3">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Berat item non-kartu (gram)
@@ -206,7 +206,7 @@ export function TaxCalculationForm({
         </div>
       )}
 
-      {boxNumber && result.breakdown.length > 0 && (
+      {boxId && result.breakdown.length > 0 && (
         <div className="rounded-lg bg-slate-50 p-3">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Preview Pembagian Pajak per Customer

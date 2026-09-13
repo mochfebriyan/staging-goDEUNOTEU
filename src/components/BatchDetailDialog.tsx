@@ -22,6 +22,7 @@ export function BatchDetailDialog({
   const items = allItems.filter((i) => i.batchId === batchId)
   const batchBills = allBatchBills.filter((b) => b.batchId === batchId)
   const getCustomerName = useStore((s) => s.getCustomerName)
+  const getBoxNumber = useStore((s) => s.getBoxNumber)
   const confirmBatchBill = useStore((s) => s.confirmBatchBill)
   const rejectBatchBill = useStore((s) => s.rejectBatchBill)
   const simulateCustomerUploadBatch = useStore((s) => s.simulateCustomerUploadBatch)
@@ -76,7 +77,7 @@ export function BatchDetailDialog({
           <div className="flex items-center gap-2">
             <h2 className="text-base font-bold text-rose-600">
               {batch.batchNumber} <span className="text-slate-400">🗃️</span>{' '}
-              {batch.boxNumber ? `(${batch.boxNumber})` : (
+              {batch.boxId ? `(${getBoxNumber(batch.boxId)})` : (
                 <span className="text-sm font-normal text-slate-400">(Box belum ditentukan)</span>
               )}{' '}
               <span className="text-sm font-normal text-slate-400">· {formatDate(batch.createdAt)}</span>

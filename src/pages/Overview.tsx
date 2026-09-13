@@ -46,9 +46,10 @@ export default function Overview() {
   const taxBills = useStore((s) => s.taxBills)
   const estimatorConfig = useStore((s) => s.estimatorConfig)
   const getCustomerName = useStore((s) => s.getCustomerName)
+  const getBoxNumber = useStore((s) => s.getBoxNumber)
 
   const batchesMissingPhoto = batches.filter((b) => (b.photoDataUrls ?? []).length === 0).length
-  const batchesWithoutBox = batches.filter((b) => !b.boxNumber).length
+  const batchesWithoutBox = batches.filter((b) => !b.boxId).length
 
   const bbBelumBayar = batchBills.filter((b) => b.status === 'Belum Bayar').length
   const bbMenunggu = batchBills.filter((b) => b.status === 'Menunggu Konfirmasi').length
@@ -66,7 +67,7 @@ export default function Overview() {
   const attention = [
     ...overdueTax.map((t) => ({
       key: t.id,
-      label: `Tax bill overdue — ${getCustomerName(t.customerId)} (Box ${t.boxNumber})`,
+      label: `Tax bill overdue — ${getCustomerName(t.customerId)} (Box ${getBoxNumber(t.boxId)})`,
       detail: `${Math.abs(daysRemaining(t.deadline))} hari lewat deadline · ${formatIDR(t.total + t.lateFeeIDR)}`,
       to: '/tax-bills',
     })),
@@ -82,7 +83,7 @@ export default function Overview() {
       .filter((t) => t.status === 'Menunggu Konfirmasi')
       .map((t) => ({
         key: t.id,
-        label: `Bukti transfer pajak menunggu konfirmasi — ${getCustomerName(t.customerId)} (Box ${t.boxNumber})`,
+        label: `Bukti transfer pajak menunggu konfirmasi — ${getCustomerName(t.customerId)} (Box ${getBoxNumber(t.boxId)})`,
         detail: formatIDR(t.total + t.lateFeeIDR),
         to: '/tax-bills',
       })),

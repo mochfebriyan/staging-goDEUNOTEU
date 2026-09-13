@@ -16,6 +16,7 @@ const STATUS_PILL_TONE: Record<TaxBillStatus, string> = {
 }
 
 interface BoxGroup {
+  boxId: string
   boxNumber: string
   bills: TaxBill[]
   total: number
@@ -27,34 +28,38 @@ interface BoxGroup {
 export default function TaxBills() {
   const customers = useStore((s) => s.customers)
   const batches = useStore((s) => s.batches)
+  const boxes = useStore((s) => s.boxes)
   const items = useStore((s) => s.items)
   const taxBills = useStore((s) => s.taxBills)
   const publishTaxBills = useStore((s) => s.publishTaxBills)
   const setItemWeights = useStore((s) => s.setItemWeights)
   const getCustomerName = useStore((s) => s.getCustomerName)
+  const getBoxNumber = useStore((s) => s.getBoxNumber)
 
   const [formOpen, setFormOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<TaxBillStatus | ''>('')
   const [customerQuery, setCustomerQuery] = useState('')
-  const [viewingBoxNumber, setViewingBoxNumber] = useState<string | null>(null)
+  const [viewingBoxId, setViewingBoxId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
 
-  const boxOptions = useMemo(
-    () => Array.from(new Set(batches.map((b) => b.boxNumber).filter(Boolean))) as string[],
-    [batches],
-  )
+  const boxOptions = useMemo(() => {
+    const idsWithBatches = new Set(batches.map((b) => b.boxId).filter(Boolean))
+    return boxes
+      .filter((box) => idsWithBatches.has(box.id))
+      .map((box) => ({ id: box.id, boxNumber: box.boxNumber }))
+  }, [boxes, batches])
 
-  function itemsByBox(boxNumber: string) {
-    const batchIds = new Set(batches.filter((b) => b.boxNumber === boxNumber).map((b) => b.id))
+  function itemsByBox(boxId: string) {
+    const batchIds = new Set(batches.filter((b) => b.boxId === boxId).map((b) => b.id))
     return items.filter((i) => batchIds.has(i.batchId))
   }
 
-  function alreadyPublishedCustomerIds(boxNumber: string) {
-    return new Set(taxBills.filter((t) => t.boxNumber === boxNumber).map((t) => t.customerId))
+  function alreadyPublishedCustomerIds(boxId: string) {
+    return new Set(taxBills.filter((t) => t.boxId === boxId).map((t) => t.customerId))
   }
 
-  function boxDeadlineFor(boxNumber: string) {
-    return taxBills.find((t) => t.boxNumber === boxNumber)?.deadline
+  function boxDeadlineFor(boxId: string) {
+    return taxBills.find((t) => t.boxId === boxId)?.deadline
   }
 
   // Dashboard shows one row per box; clicking a box opens the per-customer
@@ -62,9 +67,9 @@ export default function TaxBills() {
   const boxGroups: BoxGroup[] = useMemo(() => {
     const map = new Map<string, TaxBill[]>()
     for (const t of taxBills) {
-      map.set(t.boxNumber, [...(map.get(t.boxNumber) ?? []), t])
+      map.set(t.boxId, [...(map.get(t.boxId) ?? []), t])
     }
-    return Array.from(map.entries()).map(([boxNumber, bills]) => {
+    return Array.from(map.entries()).map(([boxId, bills]) => {
       const counts = TAX_BILL_STATUSES.reduce(
         (acc, s) => {
           acc[s] = bills.filter((b) => b.status === s).length
@@ -81,7 +86,8 @@ export default function TaxBills() {
         bills[0].publishedAt,
       )
       return {
-        boxNumber,
+        boxId,
+        boxNumber: getBoxNumber(boxId),
         bills,
         total: bills.reduce((sum, b) => sum + b.total, 0),
         counts,
@@ -89,6 +95,7 @@ export default function TaxBills() {
         publishedAt,
       }
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taxBills])
 
   const normalizedQuery = customerQuery.trim().toLowerCase()
@@ -242,11 +249,11 @@ export default function TaxBills() {
                 const hasPendingConfirmation = group.counts['Menunggu Konfirmasi'] > 0
                 return (
                 <tr
-                  key={group.boxNumber}
+                  key={group.boxId}
                   className={`cursor-pointer border-l-4 hover:bg-slate-50 ${
                     hasPendingConfirmation ? 'border-l-amber-400' : 'border-l-transparent'
                   }`}
-                  onClick={() => setViewingBoxNumber(group.boxNumber)}
+                  onClick={() => setViewingBoxId(group.boxId)}
                 >
                   <td className="px-4 py-3 font-medium text-slate-900">{group.boxNumber}</td>
                   <td className="px-4 py-3 font-semibold text-slate-900">{formatIDR(group.total)}</td>
@@ -297,8 +304,8 @@ export default function TaxBills() {
         </Modal>
       )}
 
-      {viewingBoxNumber && (
-        <TaxBoxDetailDialog boxNumber={viewingBoxNumber} onClose={() => setViewingBoxNumber(null)} />
+      {viewingBoxId && (
+        <TaxBoxDetailDialog boxId={viewingBoxId} onClose={() => setViewingBoxId(null)} />
       )}
     </div>
   )

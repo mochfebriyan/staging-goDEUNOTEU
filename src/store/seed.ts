@@ -61,7 +61,7 @@ export const seedBatches: Batch[] = [
   {
     id: 'batch_01',
     batchNumber: 'BATCH-01',
-    boxNumber: 'BOX-001',
+    boxId: 'box_001',
     orderIdWH: 'WH-2026-0001',
     orderType: 'ReqShare',
     photoDataUrls: [PLACEHOLDER_PRODUCT_PHOTO, PLACEHOLDER_PRODUCT_PHOTO],
@@ -72,7 +72,7 @@ export const seedBatches: Batch[] = [
   {
     id: 'batch_02',
     batchNumber: 'BATCH-02',
-    boxNumber: 'BOX-002',
+    boxId: 'box_002',
     orderIdWH: 'WH-2026-0002',
     orderType: 'ReqShare',
     photoDataUrls: [PLACEHOLDER_PRODUCT_PHOTO],
@@ -96,7 +96,7 @@ export const seedBatches: Batch[] = [
   {
     id: 'batch_04',
     batchNumber: 'BATCH-04',
-    boxNumber: 'BOX-002',
+    boxId: 'box_002',
     orderIdWH: 'WH-2026-0004',
     orderType: 'ReqShare',
     photoDataUrls: [],
@@ -528,7 +528,7 @@ export const seedBatchBills: BatchBill[] = [
 export const seedTaxBills: TaxBill[] = [
   {
     id: 'tbill_001',
-    boxNumber: 'BOX-001',
+    boxId: 'box_001',
     customerId: 'cust_aiko',
     itemIds: ['item_001', 'item_002'],
     kartuCount: 2,
@@ -544,7 +544,7 @@ export const seedTaxBills: TaxBill[] = [
   },
   {
     id: 'tbill_002',
-    boxNumber: 'BOX-001',
+    boxId: 'box_001',
     customerId: 'cust_bunga',
     itemIds: ['item_003'],
     kartuCount: 0,
@@ -559,7 +559,7 @@ export const seedTaxBills: TaxBill[] = [
   },
   {
     id: 'tbill_003',
-    boxNumber: 'BOX-001',
+    boxId: 'box_001',
     customerId: 'cust_citra',
     itemIds: ['item_004', 'item_005'],
     kartuCount: 1,

@@ -78,6 +78,9 @@ interface StoreState {
 
   // customers
   getCustomerName: (customerId: string) => string
+  // boxes — boxNumber is display-only, resolved live from the Box record;
+  // Batch/TaxBill never store it, only the stable boxId.
+  getBoxNumber: (boxId: string) => string
 
   // toasts
   pushToast: (message: string, tone?: Toast['tone']) => void
@@ -144,7 +147,7 @@ interface StoreState {
   // Changes a box's shared payment deadline, applied to every tax bill in
   // it at once — deadline isn't a payment-sensitive field the way total
   // is, so this stays editable regardless of any bill's status.
-  updateBoxDeadline: (boxNumber: string, deadline: string) => void
+  updateBoxDeadline: (boxId: string, deadline: string) => void
   // Deletes one or many published tax bills — but only the ones still
   // Belum Bayar (see src/lib/deleteGuards.ts). A Lunas or Menunggu
   // Konfirmasi bill is a real financial record, not undone by a delete.
@@ -237,6 +240,8 @@ export const useStore = create<StoreState>()(
       getCustomerName: (customerId) =>
         get().customers.find((c) => c.id === customerId)?.name ?? 'Unknown',
 
+      getBoxNumber: (boxId) => get().boxes.find((b) => b.id === boxId)?.boxNumber ?? 'Unknown',
+
       pushToast: (message, tone = 'info') => {
         const id = makeId('toast')
         set((s) => ({ toasts: [...s.toasts, { id, message, tone }] }))
@@ -258,7 +263,7 @@ export const useStore = create<StoreState>()(
           const batch: Batch = {
             id: batchId,
             batchNumber: input.batchNumber,
-            boxNumber: existing?.boxNumber,
+            boxId: existing?.boxId,
             orderIdWH: input.orderIdWH,
             orderType: input.orderType,
             photoDataUrls: input.photoDataUrls,
@@ -367,10 +372,10 @@ export const useStore = create<StoreState>()(
           const previouslyIncludedIds = new Set(existing?.batchIds ?? [])
           const batches = s.batches.map((b) => {
             if (includedIds.has(b.id)) {
-              return { ...b, boxNumber: box.boxNumber, orderStatus: status, updatedAt: now }
+              return { ...b, boxId: box.id, orderStatus: status, updatedAt: now }
             }
             if (previouslyIncludedIds.has(b.id)) {
-              return { ...b, boxNumber: undefined, orderStatus: 'Dibeli dari Seller' as const, updatedAt: now }
+              return { ...b, boxId: undefined, orderStatus: 'Dibeli dari Seller' as const, updatedAt: now }
             }
             return b
           })
@@ -396,7 +401,7 @@ export const useStore = create<StoreState>()(
             boxes: s.boxes.filter((b) => !idSet.has(b.id)),
             batches: s.batches.map((b) =>
               affectedBatchIds.has(b.id)
-                ? { ...b, boxNumber: undefined, orderStatus: 'Dibeli dari Seller' as const, updatedAt: now }
+                ? { ...b, boxId: undefined, orderStatus: 'Dibeli dari Seller' as const, updatedAt: now }
                 : b,
             ),
           }
@@ -467,14 +472,14 @@ export const useStore = create<StoreState>()(
           // Every batch under one box shares a single payment deadline — if
           // this box already had bills published, keep them synced to
           // whatever deadline was just chosen for the new ones.
-          const boxNumbersTouched = new Set(bills.map((b) => b.boxNumber))
+          const boxIdsTouched = new Set(bills.map((b) => b.boxId))
           const existingBills = s.taxBills.map((t) =>
-            boxNumbersTouched.has(t.boxNumber) ? { ...t, deadline } : t,
+            boxIdsTouched.has(t.boxId) ? { ...t, deadline } : t,
           )
           return { taxBills: [...newBills, ...existingBills] }
         })
         get().pushToast(
-          `Tagihan pajak box ${bills[0]?.boxNumber ?? ''} diterbitkan ke ${bills.length} customer. Notifikasi terkirim.`,
+          `Tagihan pajak box ${get().getBoxNumber(bills[0]?.boxId ?? '')} diterbitkan ke ${bills.length} customer. Notifikasi terkirim.`,
           'success',
         )
       },
@@ -558,13 +563,11 @@ export const useStore = create<StoreState>()(
         }
       },
 
-      updateBoxDeadline: (boxNumber, deadline) => {
+      updateBoxDeadline: (boxId, deadline) => {
         set((s) => ({
-          taxBills: s.taxBills.map((t) =>
-            t.boxNumber === boxNumber ? { ...t, deadline } : t,
-          ),
+          taxBills: s.taxBills.map((t) => (t.boxId === boxId ? { ...t, deadline } : t)),
         }))
-        get().pushToast(`Deadline pembayaran box ${boxNumber} diperbarui.`, 'success')
+        get().pushToast(`Deadline pembayaran box ${get().getBoxNumber(boxId)} diperbarui.`, 'success')
       },
 
       deleteTaxBills: (taxBillIds) => {
@@ -618,7 +621,14 @@ export const useStore = create<StoreState>()(
       // v6 adds TaxBill.lateFeeIDR (free-entry late payment fee, separate
       // from the product tax) — persisted bills saved before this need it
       // backfilled to 0, or reading it renders "NaN".
-      version: 6,
+      // v7 replaces the loose Batch.boxNumber/TaxBill.boxNumber string join
+      // with a stable Batch.boxId/TaxBill.boxId (matching Item.batchId's
+      // pattern) — boxNumber is now resolved live from the Box record
+      // wherever it's displayed, never stored or compared. Persisted
+      // records saved before this need boxId backfilled from their old
+      // boxNumber string, matched against the (by-then-existing) boxes
+      // list, or they'd silently vanish from their box's grouping.
+      version: 7,
       migrate: (persistedState) => {
         const state = persistedState as {
           customers?: Array<Record<string, unknown>>
@@ -683,6 +693,26 @@ export const useStore = create<StoreState>()(
             state.batches = state.batches.map((b) =>
               idsInBox.has(b.id as string) ? { ...b, orderStatus: box.status } : b,
             )
+          }
+        }
+        if (state?.boxes) {
+          const boxIdByNumber = new Map(
+            state.boxes.map((box) => [box.boxNumber as string, box.id as string]),
+          )
+          if (state?.batches) {
+            state.batches = state.batches.map((b) => {
+              if (b.boxId) return b
+              const { boxNumber, ...rest } = b
+              const boxId = boxNumber ? boxIdByNumber.get(boxNumber as string) : undefined
+              return boxId ? { ...rest, boxId } : rest
+            })
+          }
+          if (state?.taxBills) {
+            state.taxBills = state.taxBills.map((t) => {
+              if (t.boxId) return t
+              const { boxNumber, ...rest } = t
+              return { ...rest, boxId: boxIdByNumber.get(boxNumber as string) ?? 'box_unknown' }
+            })
           }
         }
         return state

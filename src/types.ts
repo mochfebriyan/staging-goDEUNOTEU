@@ -101,7 +101,7 @@ export interface BuktiTransfer {
 export interface Batch {
   id: string
   batchNumber: string
-  boxNumber?: string
+  boxId?: string
   orderIdWH: string
   orderType: OrderType
   photoDataUrls: string[]
@@ -139,7 +139,7 @@ export interface BatchBill {
 
 export interface TaxBill {
   id: string
-  boxNumber: string
+  boxId: string
   customerId: string
   itemIds: string[]
   kartuCount: number

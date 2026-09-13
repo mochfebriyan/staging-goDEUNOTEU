@@ -39,7 +39,9 @@ export default function OrderRecap() {
   const batchBills = useStore((s) => s.batchBills)
   const taxBills = useStore((s) => s.taxBills)
   const customers = useStore((s) => s.customers)
+  const boxes = useStore((s) => s.boxes)
   const getCustomerName = useStore((s) => s.getCustomerName)
+  const getBoxNumber = useStore((s) => s.getBoxNumber)
   const saveBatch = useStore((s) => s.saveBatch)
   const deleteBatches = useStore((s) => s.deleteBatches)
 
@@ -60,8 +62,8 @@ export default function OrderRecap() {
   const selectAllRef = useRef<HTMLInputElement>(null)
 
   const boxOptions = useMemo(
-    () => Array.from(new Set(batches.map((b) => b.boxNumber).filter(Boolean))) as string[],
-    [batches],
+    () => boxes.filter((box) => batches.some((b) => b.boxId === box.id)),
+    [boxes, batches],
   )
   const batchOptions = useMemo(
     () => Array.from(new Set(batches.map((b) => b.batchNumber))),
@@ -112,7 +114,7 @@ export default function OrderRecap() {
   }, [batches, paymentCountsByBatch])
 
   const filtered = batches.filter((b) => {
-    if (boxFilter && b.boxNumber !== boxFilter) return false
+    if (boxFilter && b.boxId !== boxFilter) return false
     if (batchFilter && b.batchNumber !== batchFilter) return false
     if (customerFilter) {
       const hasCustomer = items.some((i) => i.batchId === b.id && i.customerId === customerFilter)
@@ -231,9 +233,9 @@ export default function OrderRecap() {
             }}
           >
             <option value="">Semua Box</option>
-            {boxOptions.map((b) => (
-              <option key={b} value={b}>
-                {b}
+            {boxOptions.map((box) => (
+              <option key={box.id} value={box.id}>
+                {box.boxNumber}
               </option>
             ))}
           </select>
@@ -457,7 +459,9 @@ export default function OrderRecap() {
                         <span className="text-xs text-slate-400">no photo</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">{batch.boxNumber ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {batch.boxId ? getBoxNumber(batch.boxId) : '—'}
+                    </td>
                     <td className="px-4 py-3 font-medium text-slate-900">{batch.batchNumber}</td>
                     <td className="px-4 py-3 text-slate-700">
                       {Array.from(customerIds)

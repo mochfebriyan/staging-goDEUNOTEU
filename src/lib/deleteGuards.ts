@@ -33,7 +33,7 @@ export function guardBoxDeletion(boxes: Box[], taxBills: TaxBill[]): DeleteGuard
   const eligible: Box[] = []
   const blocked: Array<{ item: Box; reason: string }> = []
   for (const box of boxes) {
-    const hasTaxBills = taxBills.some((t) => t.boxNumber === box.boxNumber)
+    const hasTaxBills = taxBills.some((t) => t.boxId === box.id)
     if (hasTaxBills) {
       blocked.push({ item: box, reason: 'masih punya tagihan pajak yang dipublikasikan' })
     } else {
