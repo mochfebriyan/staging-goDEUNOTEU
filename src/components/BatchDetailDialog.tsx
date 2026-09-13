@@ -153,6 +153,7 @@ export function BatchDetailDialog({
             ) : (
               customerIds.map((customerId) => {
                 const customerItems = items.filter((i) => i.customerId === customerId)
+                const customerTotal = customerItems.reduce((sum, i) => sum + i.priceIDR, 0)
                 const bill = batchBills.find((b) => b.customerId === customerId)
                 const isOpen = expanded.has(customerId)
                 return (
@@ -163,7 +164,11 @@ export function BatchDetailDialog({
                       className="flex w-full items-center justify-between gap-3 bg-white px-4 py-3 text-left hover:bg-slate-50"
                     >
                       <span className="font-semibold text-rose-600">{getCustomerName(customerId)}</span>
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-3">
+                        <span className="text-right text-xs text-slate-500">
+                          <span className="block">{customerItems.length} item</span>
+                          <span className="font-semibold text-slate-800">{formatIDR(customerTotal)}</span>
+                        </span>
                         <StatusBadge status={bill?.status ?? 'Belum Bayar'} />
                         <span className="text-slate-400">{isOpen ? '︿' : '﹀'}</span>
                       </span>
