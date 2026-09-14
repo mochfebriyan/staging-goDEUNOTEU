@@ -12,7 +12,6 @@ export function Pagination({
   onPageChange: (page: number) => void
 }) {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
-  if (totalPages <= 1) return null
 
   const start = (page - 1) * pageSize + 1
   const end = Math.min(page * pageSize, totalItems)
