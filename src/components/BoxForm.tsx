@@ -3,6 +3,7 @@ import { formatDate } from '../lib/format'
 import { BOX_NUMBER_PREFIX, extractNumber, formatWithPrefix } from '../lib/numberedId'
 import type { SaveBoxInput } from '../store/useStore'
 import { BOX_STATUS_OPTIONS, DEFAULT_BOX_STATUS, type Batch, type Box, type BoxStatus } from '../types'
+import { ConfirmDialog } from './ConfirmDialog'
 import { TrashIcon } from './TrashIcon'
 
 export function BoxForm({
@@ -32,13 +33,21 @@ export function BoxForm({
     new Set(initial?.batchIds ?? []),
   )
   const [status, setStatus] = useState<BoxStatus>(initial?.status ?? DEFAULT_BOX_STATUS)
+  // A status change is a one-way door — once it leaves the default, this
+  // box is considered "in motion" (already on its way) and its batch
+  // composition and delete option lock for good, so confirm before it
+  // actually happens rather than after.
+  const [pendingStatus, setPendingStatus] = useState<BoxStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const isLocked = Boolean(initial) && status !== DEFAULT_BOX_STATUS
 
   // A batch can only be in one box at a time — offer batches with no box
   // yet, plus whatever is already in the box being edited.
   const choosableBatches = batches.filter((b) => !b.boxId || b.boxId === initial?.id)
 
   function toggleBatch(batchId: string) {
+    if (isLocked) return
     setSelectedBatchIds((set) => {
       const next = new Set(set)
       if (next.has(batchId)) next.delete(batchId)
@@ -46,6 +55,19 @@ export function BoxForm({
       return next
     })
     setError(null)
+  }
+
+  function handleStatusChange(newStatus: BoxStatus) {
+    if (initial && status === DEFAULT_BOX_STATUS && newStatus !== DEFAULT_BOX_STATUS) {
+      setPendingStatus(newStatus)
+    } else {
+      setStatus(newStatus)
+    }
+  }
+
+  function confirmStatusChange() {
+    if (pendingStatus) setStatus(pendingStatus)
+    setPendingStatus(null)
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -73,6 +95,7 @@ export function BoxForm({
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -105,7 +128,7 @@ export function BoxForm({
             <select
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400"
               value={status}
-              onChange={(e) => setStatus(e.target.value as BoxStatus)}
+              onChange={(e) => handleStatusChange(e.target.value as BoxStatus)}
             >
               {BOX_STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
@@ -140,6 +163,12 @@ export function BoxForm({
           </label>
           <span className="text-xs text-slate-400">{selectedBatchIds.size} batch dipilih</span>
         </div>
+        {isLocked && (
+          <p className="mb-2 text-xs text-slate-400">
+            Status box ini sudah berubah dari status awal — daftar batch di dalamnya terkunci dan
+            tidak bisa diubah lagi.
+          </p>
+        )}
         {choosableBatches.length === 0 ? (
           <p className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
             Tidak ada batch yang bisa dipilih — semua batch sudah masuk ke box lain.
@@ -159,7 +188,7 @@ export function BoxForm({
                 {choosableBatches.map((b) => (
                   <tr
                     key={b.id}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className={isLocked ? '' : 'cursor-pointer hover:bg-slate-50'}
                     onClick={() => toggleBatch(b.id)}
                   >
                     <td className="px-3 py-2">
@@ -167,8 +196,9 @@ export function BoxForm({
                         type="checkbox"
                         checked={selectedBatchIds.has(b.id)}
                         readOnly
+                        disabled={isLocked}
                         aria-label={`Pilih ${b.batchNumber}`}
-                        className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-400"
+                        className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-400 disabled:opacity-50"
                       />
                     </td>
                     <td className="px-3 py-2 font-medium text-slate-900">{b.batchNumber}</td>
@@ -184,7 +214,7 @@ export function BoxForm({
       </div>
 
       <div className="mt-1 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-        {initial && onDelete ? (
+        {initial && onDelete && !isLocked ? (
           <button
             type="button"
             onClick={onDelete}
@@ -213,5 +243,16 @@ export function BoxForm({
         </div>
       </div>
     </form>
+
+    {pendingStatus && (
+      <ConfirmDialog
+        title="Ubah Status Box?"
+        message="Setelah status box ini diubah, box ini tidak akan bisa dihapus atau diubah lagi daftar batch-nya. Lanjutkan?"
+        confirmLabel="Lanjutkan"
+        onConfirm={confirmStatusChange}
+        onCancel={() => setPendingStatus(null)}
+      />
+    )}
+    </>
   )
 }

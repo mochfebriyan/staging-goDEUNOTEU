@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Customer, Item, TaxBill } from '../types'
 import { calculateTaxShares, type TaxCalcItemInput } from '../lib/calc'
 import { formatIDR } from '../lib/format'
@@ -16,8 +16,6 @@ export function TaxCalculationForm({
   boxOptions,
   itemsByBox,
   customers,
-  alreadyPublishedCustomerIds,
-  boxDeadlineFor,
   onSaveWeights,
   onPublish,
   onCancel,
@@ -25,8 +23,6 @@ export function TaxCalculationForm({
   boxOptions: Array<{ id: string; boxNumber: string }>
   itemsByBox: (boxId: string) => Item[]
   customers: Customer[]
-  alreadyPublishedCustomerIds: (boxId: string) => Set<string>
-  boxDeadlineFor: (boxId: string) => string | undefined
   onSaveWeights: (weights: Array<{ itemId: string; weightGrams: number }>) => void
   onPublish: (
     bills: Array<
@@ -40,24 +36,13 @@ export function TaxCalculationForm({
   const [totalTax, setTotalTax] = useState<number>(0)
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [deadlineDate, setDeadlineDate] = useState(suggestedDeadlineDate())
-  const [existingDeadlineIso, setExistingDeadlineIso] = useState<string | null>(null)
   const [dialog, setDialog] = useState<{ tone: 'success' | 'error'; message: string } | null>(null)
 
-  const boxItems = boxId ? itemsByBox(boxId) : []
-  const alreadyPublished = boxId ? alreadyPublishedCustomerIds(boxId) : new Set<string>()
-  const eligibleItems = boxItems.filter((i) => !alreadyPublished.has(i.customerId))
+  // Publish is one-shot per box (only boxes with zero existing tax bills
+  // are ever offered here — see boxOptions in TaxBills.tsx), so every item
+  // in the box is always eligible, no "already published" filtering.
+  const eligibleItems = boxId ? itemsByBox(boxId) : []
   const nonKartuItems = eligibleItems.filter((i) => i.tipeBarang !== 'Kartu')
-
-  // A box only ever has one deadline — if it already has published bills,
-  // switch the picker to that existing deadline instead of the +7-day
-  // suggestion, since publishing more customers into it must share it.
-  useEffect(() => {
-    if (!boxId) return
-    const existing = boxDeadlineFor(boxId) ?? null
-    setExistingDeadlineIso(existing)
-    if (existing) setDeadlineDate(existing.slice(0, 10))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boxId])
 
   function getCustomerName(id: string) {
     return customers.find((c) => c.id === id)?.name ?? 'Unknown'
@@ -84,17 +69,12 @@ export function TaxCalculationForm({
       return fail('Isi berat (gram) untuk semua item non-kartu di box ini.')
     }
     if (result.breakdown.length === 0) {
-      return fail('Tidak ada customer baru yang bisa dipublikasikan pada box ini.')
+      return fail('Tidak ada customer yang bisa dipublikasikan pada box ini.')
     }
 
-    // Preserve the existing deadline's exact timestamp if Admin left the
-    // date picker on the box's already-set deadline; otherwise build a new
-    // one from the chosen date (noon local time, matching the LINE example's
-    // "batas pembayaran ... jam 12:00 siang" convention).
-    const deadlineIso =
-      existingDeadlineIso && existingDeadlineIso.slice(0, 10) === deadlineDate
-        ? existingDeadlineIso
-        : new Date(`${deadlineDate}T12:00:00`).toISOString()
+    // Noon local time, matching the LINE example's "batas pembayaran ...
+    // jam 12:00 siang" convention.
+    const deadlineIso = new Date(`${deadlineDate}T12:00:00`).toISOString()
 
     // onSaveWeights/onPublish hand off to the store synchronously — if
     // either throws for any reason, still surface a dialog rather than
@@ -164,20 +144,8 @@ export function TaxCalculationForm({
             value={deadlineDate}
             onChange={(e) => setDeadlineDate(e.target.value)}
           />
-          {boxId && existingDeadlineIso && (
-            <p className="mt-1 text-xs text-slate-400">
-              Box ini sudah punya deadline — ubah di sini akan menerapkannya ke semua tagihan di box ini.
-            </p>
-          )}
         </div>
       </div>
-
-      {boxId && alreadyPublished.size > 0 && (
-        <p className="text-xs text-slate-400">
-          {alreadyPublished.size} customer pada box ini sudah memiliki tagihan pajak dan tidak akan
-          dipublikasikan ulang.
-        </p>
-      )}
 
       {boxId && nonKartuItems.length > 0 && (
         <div className="rounded-lg border border-slate-200 p-3">

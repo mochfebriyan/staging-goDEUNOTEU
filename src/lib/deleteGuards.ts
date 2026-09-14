@@ -7,7 +7,7 @@
 // Konfirmasi bill) protects itself, and structural dependents (a Batch
 // whose items are in a published Tax Bill, a Box a Tax Bill still points
 // at) inherit that protection one level up.
-import type { Batch, BatchBill, Box, Item, TaxBill } from '../types'
+import { DEFAULT_BOX_STATUS, type Batch, type BatchBill, type Box, type Item, type TaxBill } from '../types'
 
 export interface DeleteGuardResult<T> {
   eligible: T[]
@@ -29,13 +29,17 @@ export function guardTaxBillDeletion(bills: TaxBill[]): DeleteGuardResult<TaxBil
   return { eligible, blocked }
 }
 
-export function guardBoxDeletion(boxes: Box[], taxBills: TaxBill[]): DeleteGuardResult<Box> {
+// A box's status is a one-way door — once it leaves the default, it's
+// considered "in motion" and locks for good (see BoxForm/saveBox), so
+// that's the only check needed here. Tax bills can only ever exist on a
+// box past that point anyway (publishing requires Di Bea Cukai or later),
+// so this single check already covers that case too.
+export function guardBoxDeletion(boxes: Box[]): DeleteGuardResult<Box> {
   const eligible: Box[] = []
   const blocked: Array<{ item: Box; reason: string }> = []
   for (const box of boxes) {
-    const hasTaxBills = taxBills.some((t) => t.boxId === box.id)
-    if (hasTaxBills) {
-      blocked.push({ item: box, reason: 'masih punya tagihan pajak yang dipublikasikan' })
+    if (box.status !== DEFAULT_BOX_STATUS) {
+      blocked.push({ item: box, reason: 'status box sudah berubah dari status awal' })
     } else {
       eligible.push(box)
     }

@@ -117,11 +117,12 @@ interface StoreState {
   deleteBoxes: (boxIds: string[]) => void
 
   // Feature C
-  // `deadline` is admin-chosen at publish time (pre-filled with a +7-day
-  // suggestion by the caller, not forced) rather than always computed as
-  // publish date + 7 days — real deadlines vary per box. If the box
-  // already had bills published, every existing bill in it is synced to
-  // this same deadline too, since a box only ever has one.
+  // Publishing is a one-shot action per box: a box only ever gets
+  // published once, for every customer in it at once, and only once its
+  // status reaches "Di Bea Cukai" or later (enforced by the caller via
+  // which boxes it offers) — so there's never an "existing bills in this
+  // box" case to reconcile with. `deadline` is admin-chosen at publish
+  // time (pre-filled with a +7-day suggestion by the caller, not forced).
   publishTaxBills: (
     bills: Array<
       Omit<TaxBill, 'id' | 'publishedAt' | 'deadline' | 'status' | 'buktiTransfer' | 'lateFeeIDR'>
@@ -358,17 +359,23 @@ export const useStore = create<StoreState>()(
         set((s) => {
           const existing = s.boxes.find((b) => b.id === boxId)
           const status: BoxStatus = input.status ?? existing?.status ?? DEFAULT_BOX_STATUS
+          // A box's batch composition locks the moment its status leaves
+          // the default — same rule the UI enforces (BoxForm disables the
+          // batch picker), re-asserted here so a stale/bypassed form can't
+          // sneak a composition change through.
+          const isLocked = Boolean(existing) && existing!.status !== DEFAULT_BOX_STATUS
+          const batchIds = isLocked ? (existing?.batchIds ?? []) : input.batchIds
           const box: Box = {
             id: boxId,
             boxNumber: input.boxNumber,
-            batchIds: input.batchIds,
+            batchIds,
             status,
             createdAt: existing?.createdAt ?? now,
             updatedAt: now,
           }
           const boxes = isEdit ? s.boxes.map((b) => (b.id === boxId ? box : b)) : [box, ...s.boxes]
 
-          const includedIds = new Set(input.batchIds)
+          const includedIds = new Set(batchIds)
           const previouslyIncludedIds = new Set(existing?.batchIds ?? [])
           const batches = s.batches.map((b) => {
             if (includedIds.has(b.id)) {
@@ -392,7 +399,7 @@ export const useStore = create<StoreState>()(
         let blockedCount = 0
         set((s) => {
           const targets = s.boxes.filter((b) => boxIds.includes(b.id))
-          const { eligible, blocked } = guardBoxDeletion(targets, s.taxBills)
+          const { eligible, blocked } = guardBoxDeletion(targets)
           deletedCount = eligible.length
           blockedCount = blocked.length
           const idSet = new Set(eligible.map((b) => b.id))
@@ -469,14 +476,7 @@ export const useStore = create<StoreState>()(
             status: 'Belum Bayar',
             lateFeeIDR: 0,
           }))
-          // Every batch under one box shares a single payment deadline — if
-          // this box already had bills published, keep them synced to
-          // whatever deadline was just chosen for the new ones.
-          const boxIdsTouched = new Set(bills.map((b) => b.boxId))
-          const existingBills = s.taxBills.map((t) =>
-            boxIdsTouched.has(t.boxId) ? { ...t, deadline } : t,
-          )
-          return { taxBills: [...newBills, ...existingBills] }
+          return { taxBills: [...newBills, ...s.taxBills] }
         })
         get().pushToast(
           `Tagihan pajak box ${get().getBoxNumber(bills[0]?.boxId ?? '')} diterbitkan ke ${bills.length} customer. Notifikasi terkirim.`,

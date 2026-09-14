@@ -7,7 +7,13 @@ import { DeadlineBadge } from '../components/DeadlineBadge'
 import { EmptyState } from '../components/EmptyState'
 import { PAGE_SIZE, Pagination } from '../components/Pagination'
 import { daysRemaining, formatDate, formatIDR } from '../lib/format'
-import { TAX_BILL_STATUSES, type TaxBill, type TaxBillStatus } from '../types'
+import { TAX_BILL_STATUSES, type BoxStatus, type TaxBill, type TaxBillStatus } from '../types'
+
+// Tax can only be calculated once a box has actually left Japan and its
+// contents are settled for real (customs knows the weights) — matches the
+// business rule that publish is a one-shot action per box, never revised
+// mid-flight.
+const PUBLISHABLE_BOX_STATUSES: BoxStatus[] = ['Di Bea Cukai', 'Di WH Indonesia', 'Selesai']
 
 const STATUS_PILL_TONE: Record<TaxBillStatus, string> = {
   'Belum Bayar': 'bg-rose-100 text-rose-700',
@@ -42,24 +48,23 @@ export default function TaxBills() {
   const [viewingBoxId, setViewingBoxId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
 
+  // Publish is one-shot per box: only offer boxes that (a) have actually
+  // reached a customs-cleared-or-later status and (b) don't already have
+  // tax bills — a box drops off this list the moment it's published, for
+  // good, since there's no partial/incremental publish anymore.
   const boxOptions = useMemo(() => {
     const idsWithBatches = new Set(batches.map((b) => b.boxId).filter(Boolean))
+    const idsAlreadyPublished = new Set(taxBills.map((t) => t.boxId))
     return boxes
+      .filter((box) => PUBLISHABLE_BOX_STATUSES.includes(box.status))
       .filter((box) => idsWithBatches.has(box.id))
+      .filter((box) => !idsAlreadyPublished.has(box.id))
       .map((box) => ({ id: box.id, boxNumber: box.boxNumber }))
-  }, [boxes, batches])
+  }, [boxes, batches, taxBills])
 
   function itemsByBox(boxId: string) {
     const batchIds = new Set(batches.filter((b) => b.boxId === boxId).map((b) => b.id))
     return items.filter((i) => batchIds.has(i.batchId))
-  }
-
-  function alreadyPublishedCustomerIds(boxId: string) {
-    return new Set(taxBills.filter((t) => t.boxId === boxId).map((t) => t.customerId))
-  }
-
-  function boxDeadlineFor(boxId: string) {
-    return taxBills.find((t) => t.boxId === boxId)?.deadline
   }
 
   // Dashboard shows one row per box; clicking a box opens the per-customer
@@ -295,8 +300,6 @@ export default function TaxBills() {
             boxOptions={boxOptions}
             itemsByBox={itemsByBox}
             customers={customers}
-            alreadyPublishedCustomerIds={alreadyPublishedCustomerIds}
-            boxDeadlineFor={boxDeadlineFor}
             onSaveWeights={setItemWeights}
             onPublish={publishTaxBills}
             onCancel={() => setFormOpen(false)}

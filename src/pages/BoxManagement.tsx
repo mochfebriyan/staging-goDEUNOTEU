@@ -13,7 +13,6 @@ import type { Box } from '../types'
 export default function BoxManagement() {
   const boxes = useStore((s) => s.boxes)
   const batches = useStore((s) => s.batches)
-  const taxBills = useStore((s) => s.taxBills)
   const saveBox = useStore((s) => s.saveBox)
   const deleteBoxes = useStore((s) => s.deleteBoxes)
 
@@ -38,7 +37,7 @@ export default function BoxManagement() {
   // there's no bulk/table delete, so a wrong-checkbox mistake isn't possible.
   function handleDeleteClick() {
     if (!viewingBox) return
-    const { eligible } = guardBoxDeletion([viewingBox], taxBills)
+    const { eligible } = guardBoxDeletion([viewingBox])
     if (eligible.length === 0) {
       setDeleteBlockedOpen(true)
     } else {
@@ -159,8 +158,8 @@ export default function BoxManagement() {
       {deleteBlockedOpen && (
         <AlertDialog
           tone="error"
-          title="Box Ini Belum Bisa Dihapus"
-          message="Box ini masih punya tagihan pajak yang dipublikasikan — hapus tagihannya dulu di halaman Tax Bills sebelum menghapus box ini."
+          title="Box Ini Tidak Bisa Dihapus"
+          message="Status box ini sudah berubah dari status awal, jadi dianggap sudah berjalan dan tidak bisa dihapus lagi."
           onClose={() => setDeleteBlockedOpen(false)}
         />
       )}
