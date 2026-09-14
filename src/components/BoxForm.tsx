@@ -214,13 +214,15 @@ export function BoxForm({
       </div>
 
       <div className="mt-1 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-        {initial && onDelete && !isLocked ? (
+        {initial && onDelete ? (
           <button
             type="button"
             onClick={onDelete}
-            className="inline-flex items-center gap-1.5 rounded-md border border-rose-300 bg-white px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
+            disabled={isLocked}
+            title={isLocked ? 'Status box ini sudah berubah dari status awal — tidak bisa dihapus lagi.' : undefined}
+            className="inline-flex items-center gap-1.5 rounded-md border border-rose-300 bg-white px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:hover:bg-slate-50"
           >
-            <TrashIcon className="h-4 w-4 text-rose-600" />
+            <TrashIcon className={isLocked ? 'h-4 w-4 text-slate-400' : 'h-4 w-4 text-rose-600'} />
             Hapus Box
           </button>
         ) : (

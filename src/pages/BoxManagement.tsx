@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Modal } from '../components/Modal'
-import { AlertDialog } from '../components/AlertDialog'
 import { BoxForm } from '../components/BoxForm'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { PAGE_SIZE, Pagination } from '../components/Pagination'
-import { guardBoxDeletion } from '../lib/deleteGuards'
 import { formatDate } from '../lib/format'
 import type { Box } from '../types'
 
@@ -19,7 +17,6 @@ export default function BoxManagement() {
   const [formOpen, setFormOpen] = useState(false)
   const [viewingBox, setViewingBox] = useState<Box | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const [deleteBlockedOpen, setDeleteBlockedOpen] = useState(false)
   const [page, setPage] = useState(1)
 
   const sorted = [...boxes].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -35,14 +32,11 @@ export default function BoxManagement() {
 
   // Delete only ever targets the box currently open in the detail card —
   // there's no bulk/table delete, so a wrong-checkbox mistake isn't possible.
+  // BoxForm already disables the delete button once the box is locked, so
+  // this is only ever reachable while the box is still deletable.
   function handleDeleteClick() {
     if (!viewingBox) return
-    const { eligible } = guardBoxDeletion([viewingBox])
-    if (eligible.length === 0) {
-      setDeleteBlockedOpen(true)
-    } else {
-      setDeleteConfirmOpen(true)
-    }
+    setDeleteConfirmOpen(true)
   }
 
   function handleDeleteConfirm() {
@@ -152,15 +146,6 @@ export default function BoxManagement() {
           }
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteConfirmOpen(false)}
-        />
-      )}
-
-      {deleteBlockedOpen && (
-        <AlertDialog
-          tone="error"
-          title="Box Ini Tidak Bisa Dihapus"
-          message="Status box ini sudah berubah dari status awal, jadi dianggap sudah berjalan dan tidak bisa dihapus lagi."
-          onClose={() => setDeleteBlockedOpen(false)}
         />
       )}
     </div>

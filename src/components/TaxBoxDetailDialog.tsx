@@ -5,7 +5,6 @@ import { guardTaxBillDeletion } from '../lib/deleteGuards'
 import { formatDate, formatIDR } from '../lib/format'
 import { buildTaxTagihanTemplate } from '../lib/taxTagihanTemplate'
 import { KARTU_FLAT_TAX_IDR } from '../types'
-import { AlertDialog } from './AlertDialog'
 import { ConfirmDialog } from './ConfirmDialog'
 import { DeadlineBadge } from './DeadlineBadge'
 import { ImageLightbox } from './ImageLightbox'
@@ -45,9 +44,9 @@ export function TaxBoxDetailDialog({
   // Publishing is one-shot per box, so deleting is too: either every bill
   // in the box goes (to let Admin fix a miscalculated publish and redo it
   // cleanly), or none do — never a partial delete. Blocked outright the
-  // moment even one bill in the box is no longer Belum Bayar.
+  // moment even one bill in the box is no longer Belum Bayar (button is
+  // disabled in that case, see deleteAllBlocked below).
   const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false)
-  const [deleteAllBlockedOpen, setDeleteAllBlockedOpen] = useState(false)
 
   if (taxBills.length === 0) return null
 
@@ -123,13 +122,11 @@ export function TaxBoxDetailDialog({
     setEditingDeadline(false)
   }
 
+  const deleteAllBlocked = guardTaxBillDeletion(taxBills).blocked.length > 0
+
   function handleDeleteAllClick() {
-    const { blocked } = guardTaxBillDeletion(taxBills)
-    if (blocked.length > 0) {
-      setDeleteAllBlockedOpen(true)
-    } else {
-      setDeleteAllConfirmOpen(true)
-    }
+    if (deleteAllBlocked) return
+    setDeleteAllConfirmOpen(true)
   }
 
   function confirmDeleteAll() {
@@ -544,9 +541,15 @@ export function TaxBoxDetailDialog({
             <button
               type="button"
               onClick={handleDeleteAllClick}
-              className="inline-flex items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
+              disabled={deleteAllBlocked}
+              title={
+                deleteAllBlocked
+                  ? 'Box ini sudah punya tagihan yang dibayar atau menunggu konfirmasi — begitu ada satu saja, semua tagihan di box ini tidak bisa dihapus lagi.'
+                  : undefined
+              }
+              className="inline-flex items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:hover:bg-slate-50"
             >
-              <TrashIcon className="h-4 w-4 text-rose-600" />
+              <TrashIcon className={deleteAllBlocked ? 'h-4 w-4 text-slate-400' : 'h-4 w-4 text-rose-600'} />
               Hapus Semua Tagihan di Box Ini
             </button>
           </div>
@@ -561,15 +564,6 @@ export function TaxBoxDetailDialog({
           message={`Semua ${taxBills.length} tagihan pajak di box ini akan dihapus, supaya bisa dihitung dan dipublikasikan ulang dari awal. Tindakan ini tidak bisa dibatalkan.`}
           onConfirm={confirmDeleteAll}
           onCancel={() => setDeleteAllConfirmOpen(false)}
-        />
-      )}
-
-      {deleteAllBlockedOpen && (
-        <AlertDialog
-          tone="error"
-          title="Tidak Bisa Dihapus"
-          message="Box ini sudah punya tagihan yang dibayar atau menunggu konfirmasi — begitu ada satu saja, semua tagihan di box ini tidak bisa dihapus lagi."
-          onClose={() => setDeleteAllBlockedOpen(false)}
         />
       )}
     </div>
