@@ -24,3 +24,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Performance test output (attach to the report, not the repo)
+perf/results/*
+!perf/results/.gitkeep
