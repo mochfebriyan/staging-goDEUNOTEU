@@ -28,3 +28,4 @@ dist-ssr
 # Performance test output (attach to the report, not the repo)
 perf/results/*
 !perf/results/.gitkeep
+supabase/.temp
