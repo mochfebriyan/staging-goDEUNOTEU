@@ -71,6 +71,7 @@ erDiagram
         tipe_kartu tipe_kartu "only when Kartu"
         numeric price_idr
         numeric weight_grams "non-Kartu"
+        text description "optional, max 500"
         uuid tax_bill_id FK "set on publish"
         timestamptz created_at
         timestamptz updated_at
@@ -171,3 +172,5 @@ hold even if someone edits data outside the app:
   (`publish_tax_bills`); a non-`Belum Bayar` tax bill can't be deleted (trigger).
 - One batch bill per (batch, customer), one tax bill per (box, customer) — unique constraints.
 - `tipe_kartu` is required for Kartu items and forbidden otherwise; prices > 0.
+- `description` is optional free text per item, at most 500 characters
+  (`0002_item_description.sql`).

@@ -87,6 +87,8 @@ interface ItemRow {
   tipe_kartu: TipeKartu | null
   price_idr: number
   weight_grams: number | null
+  // Added by supabase/migrations/0002_item_description.sql.
+  description?: string | null
   tax_bill_id: string | null
   created_at: string
   updated_at: string
@@ -189,6 +191,7 @@ export async function fetchAll(): Promise<RemoteSnapshot> {
     tipeKartu: r.tipe_kartu ?? undefined,
     priceIDR: Number(r.price_idr),
     weightGrams: r.weight_grams == null ? undefined : Number(r.weight_grams),
+    description: r.description ?? undefined,
     createdAt: iso(r.created_at),
     updatedAt: iso(r.updated_at),
   }))
@@ -313,6 +316,7 @@ export interface RemoteSaveBatchInput {
     tipeKartu?: TipeKartu
     priceIDR: number
     weightGrams?: number
+    description?: string
   }>
 }
 
@@ -345,6 +349,7 @@ export async function saveBatch(input: RemoteSaveBatchInput): Promise<number> {
         tipe_kartu: it.tipeKartu ?? null,
         price_idr: it.priceIDR,
         weight_grams: it.weightGrams ?? null,
+        description: it.description?.trim() || null,
       })),
     }),
   ) as number

@@ -30,6 +30,10 @@ Supabase
 2. Open [`supabase/migrations/0001_init.sql`](../supabase/migrations/0001_init.sql)
    from this repo, copy **the whole file**, paste it, and click **Run**.
    You should see `Success. No rows returned`.
+   Then do the same with
+   [`supabase/migrations/0002_item_description.sql`](../supabase/migrations/0002_item_description.sql)
+   (adds the optional item description). Already set up before this file
+   existed? Run only `0002` on your existing database.
 3. New query again: paste [`supabase/seed.sql`](../supabase/seed.sql) and
    **Run**. This adds the 15 demo customers.
 4. Check **Table Editor**: you should see `admins`, `customers` (15 rows),

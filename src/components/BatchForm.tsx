@@ -27,7 +27,10 @@ interface ItemRow {
   tipeKartu?: TipeKartu
   priceIDR: number
   weightGrams?: number
+  description?: string
 }
+
+const DESCRIPTION_MAX_LENGTH = 500
 
 interface CustomerOrderRow {
   localId: string
@@ -53,6 +56,7 @@ function toCustomerOrders(items: Item[]): CustomerOrderRow[] {
       tipeKartu: it.tipeKartu,
       priceIDR: it.priceIDR,
       weightGrams: it.weightGrams,
+      description: it.description,
     }
     byCustomer.set(it.customerId, [...(byCustomer.get(it.customerId) ?? []), row])
   }
@@ -195,6 +199,9 @@ export function BatchForm({
           return fail('Berat (gram) wajib diisi untuk item non-Kartu.')
         }
         if (it.priceIDR <= 0) return fail('Harga item (IDR) harus lebih dari 0.')
+        if ((it.description ?? '').trim().length > DESCRIPTION_MAX_LENGTH) {
+          return fail(`Deskripsi item maksimal ${DESCRIPTION_MAX_LENGTH} karakter.`)
+        }
       }
     }
     const ids = customerOrders.map((r) => r.customerId)
@@ -222,6 +229,7 @@ export function BatchForm({
             tipeKartu: it.tipeBarang === 'Kartu' ? it.tipeKartu : undefined,
             priceIDR: it.priceIDR,
             weightGrams: it.tipeBarang !== 'Kartu' ? it.weightGrams : undefined,
+            description: it.description?.trim() || undefined,
           })),
         })),
       })
@@ -473,6 +481,22 @@ export function BatchForm({
                           ✕
                         </button>
                       )}
+                    </div>
+                    <div className="col-span-11">
+                      <label className="mb-1 block text-xs text-slate-500">
+                        Deskripsi <span className="text-slate-400">(opsional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={DESCRIPTION_MAX_LENGTH}
+                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                        value={it.description ?? ''}
+                        onChange={(e) =>
+                          updateItem(order.localId, it.localId, { description: e.target.value })
+                        }
+                        placeholder="Contoh: nama karakter, seri, kondisi barang"
+                        disabled={isLocked}
+                      />
                     </div>
                   </div>
                 ))}

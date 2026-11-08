@@ -118,6 +118,8 @@ export interface Item {
   tipeKartu?: TipeKartu
   priceIDR: number
   weightGrams?: number
+  // Optional free text (character, series, condition…). Max 500 chars.
+  description?: string
   createdAt: string
   updatedAt: string
 }

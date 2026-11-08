@@ -29,7 +29,8 @@ store (`src/store/useStore.ts`), persisted to `localStorage`, no login.
 - **Setup guide:** [`docs/SUPABASE_SETUP.md`](docs/SUPABASE_SETUP.md):
   create the tables, add an admin, fill `.env`, smoke test.
 - **ERD + table reference:** [`docs/ERD.md`](docs/ERD.md)
-- **Schema:** [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)
+- **Schema:** [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql),
+  then [`0002_item_description.sql`](supabase/migrations/0002_item_description.sql)
   (tables, RPC functions, RLS, storage buckets); demo customers in
   [`supabase/seed.sql`](supabase/seed.sql).
 
