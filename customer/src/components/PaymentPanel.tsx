@@ -78,10 +78,10 @@ export function PaymentPanel({
             ? 'Upload bukti transfer'
             : null
 
-  function submit() {
+  async function submit() {
     if (!bill || !method || !file || busy) return
     setBusy(true)
-    const ok = submitPayment({ kind, billId: bill.id, method, fileName: file.name, dataUrl: file.dataUrl })
+    const ok = await submitPayment({ kind, billId: bill.id, method, fileName: file.name, dataUrl: file.dataUrl })
     setBusy(false)
     if (ok) setFile(null)
   }

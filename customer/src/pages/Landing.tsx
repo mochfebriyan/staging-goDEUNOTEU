@@ -29,10 +29,11 @@ import {
   XLogoIcon,
 } from '../components/Icons'
 import { useLoginModal } from '../components/Layout'
+import { useAuth } from '../auth'
 import { Avatar, Card, EmptyState, MediaPlaceholder, PageHeader, StatusBadge, primaryButton, secondaryButton } from '../components/ui'
 import { formatDate, formatDateTime, formatIDR } from '../shared/format'
 import type { OrderStatus } from '../shared/types'
-import { batchOwners, myBatchBills, myBatches, myNotifications, myTaxBills, useStore } from '../store'
+import { MODE, batchOwners, myBatchBills, myBatches, myNotifications, myTaxBills, useStore } from '../store'
 
 type Icon = ComponentType<{ size?: number; className?: string }>
 
@@ -317,6 +318,18 @@ function ProfileTab() {
   const s = useStore()
   const showLogin = useLoginModal((m) => m.show)
   const customer = s.customers.find((c) => c.id === s.customerId)
+  const auth = useAuth()
+
+  if (!customer && (auth.status === 'loading' || auth.status === 'needsCode')) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col gap-6">
+        <PageHeader title="Profil" />
+        <Card className="text-center text-sm text-slate-600">
+          {auth.status === 'loading' ? 'Memuat akun…' : 'Lengkapi profil kamu dulu lewat tombol "Lengkapi profil" di atas.'}
+        </Card>
+      </div>
+    )
+  }
 
   if (!customer) {
     return (
@@ -336,19 +349,20 @@ function ProfileTab() {
   const batchBills = myBatchBills(s)
   const taxBills = myTaxBills(s)
   const notifications = myNotifications(s)
-  const read = new Set(s.readNotificationIds)
-  const unread = notifications.filter((n) => !read.has(n.id))
+  const unread = notifications.filter((n) => !n.read)
+  const linePicture = auth.status === 'linked' ? (auth.linePicture ?? auth.customer?.avatarUrl ?? undefined) : undefined
+  const signOut = auth.status === 'linked' ? auth.signOut : s.logout
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Profil" />
       <Card className="flex flex-wrap items-center gap-4">
-        <Avatar name={customer.name} size={48} />
+        <Avatar name={customer.name} size={48} src={linePicture} />
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-slate-500">DN Line</p>
+          <p className="text-xs text-slate-500">DN Line{auth.lineName && auth.lineName !== customer.name ? ` · ${auth.lineName}` : ''}</p>
           <p className="text-base font-semibold text-slate-900">{customer.name}</p>
         </div>
-        <button type="button" onClick={s.logout} className={secondaryButton}>
+        <button type="button" onClick={signOut} className={secondaryButton}>
           Keluar
         </button>
       </Card>
@@ -384,8 +398,8 @@ function ProfileTab() {
                   onClick={() => s.markNotificationsRead([n.id])}
                   className="flex items-start justify-between gap-4 py-2.5 text-sm hover:text-rose-700"
                 >
-                  <span className={read.has(n.id) ? 'text-slate-500' : 'font-medium text-slate-900'}>
-                    {!read.has(n.id) && <span className="mr-2 inline-block h-2 w-2 rounded-full bg-rose-500" aria-label="belum dibaca" />}
+                  <span className={n.read ? 'text-slate-500' : 'font-medium text-slate-900'}>
+                    {!n.read && <span className="mr-2 inline-block h-2 w-2 rounded-full bg-rose-500" aria-label="belum dibaca" />}
                     {n.message}
                   </span>
                   <span className="shrink-0 text-xs text-slate-400" title={formatDateTime(n.at)}>
@@ -398,11 +412,11 @@ function ProfileTab() {
         )}
       </Card>
 
-      <div className="text-right">
+      {MODE === 'demo' && <div className="text-right">
         <button type="button" onClick={s.resetDemo} className="text-xs text-slate-400 underline hover:text-slate-600">
           Reset data demo
         </button>
-      </div>
+      </div>}
     </div>
   )
 }

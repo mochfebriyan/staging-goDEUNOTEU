@@ -26,6 +26,25 @@ Open http://localhost:5173/id.
 | `/id/ems-tax` | Tagihan EMS & Pajak (FR-GO-2-001 … 007) |
 | `/id/calculator` | Kalkulator Harga (FR-GO-3-001 … 005) |
 
+## LINE Login
+
+Uses the Supabase project from the repo-root `.env` (`envDir: '..'`), plus
+`VITE_LINE_CHANNEL_ID`. Supabase's custom OIDC provider can't verify LINE
+web-login ID tokens (HS256), so the code exchange runs in the `line-auth`
+Edge Function (`../supabase/functions/line-auth/index.ts`):
+
+1. "Lanjut dengan LINE" → LINE authorize page (PKCE, state, nonce).
+2. LINE → `/id/line-callback?code=…` → `line-auth` exchanges and verifies
+   it with LINE, creates/finds the Supabase user, returns a session.
+3. First login: "Saya customer baru" (`register_customer`) or a one-time
+   code from Admin GO (`link_customer`). Migrations 0003–0005.
+
+Setup: LINE console → LINE Login → Callback URL lists
+`http://localhost:5174/id/line-callback` (and the deployed URL); Edge
+Function secrets `LINE_CHANNEL_ID`, `LINE_CHANNEL_SECRET`; "Verify JWT" off.
+Run this app on port 5174 (`npm run dev -- --port 5174`) so the callback
+URL matches.
+
 ## Demo mode
 
 LINE Login isn't set up yet, so the app runs on demo data: the same seed
