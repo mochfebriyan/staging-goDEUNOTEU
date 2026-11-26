@@ -12,7 +12,6 @@ import {
   TESTIMONIALS_SECTION,
 } from '../content'
 import {
-  ArrowRightIcon,
   BagIcon,
   CalculatorIcon,
   ChatIcon,
@@ -134,15 +133,10 @@ function HomeTab() {
       </section>
 
       <section className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-rose-500 uppercase">{TESTIMONIALS_SECTION.eyebrow}</p>
-            <h3 className="mt-1 text-xl font-bold text-slate-900">{TESTIMONIALS_SECTION.title}</h3>
-            <p className="mt-1 text-sm text-slate-500">{TESTIMONIALS_SECTION.body}</p>
-          </div>
-          <a href={TESTIMONIALS_SECTION.seeAllHref} className="inline-flex items-center gap-1 text-sm font-medium text-rose-600 hover:text-rose-700">
-            {TESTIMONIALS_SECTION.seeAllLabel} <ArrowRightIcon size={14} />
-          </a>
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-rose-500 uppercase">{TESTIMONIALS_SECTION.eyebrow}</p>
+          <h3 className="mt-1 text-xl font-bold text-slate-900">{TESTIMONIALS_SECTION.title}</h3>
+          <p className="mt-1 text-sm text-slate-500">{TESTIMONIALS_SECTION.body}</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TESTIMONIALS.slice(0, 6).map((t, i) => (

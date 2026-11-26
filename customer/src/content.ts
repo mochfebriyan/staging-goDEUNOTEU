@@ -69,8 +69,6 @@ export const TESTIMONIALS_SECTION = {
   eyebrow: 'Testimoni',
   title: 'Kata mereka yang sudah jajan.',
   body: 'Foto asli dari pembeli, dikirim langsung begitu paketnya sampai.',
-  seeAllLabel: 'Lihat semua testimoni',
-  seeAllHref: '#', // TODO: testimonial page
 }
 
 // Buyer testimonials (first 6 shown on Home). Photos live in public/testimoni/.
