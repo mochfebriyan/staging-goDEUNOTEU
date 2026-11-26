@@ -32,9 +32,9 @@ Customer Dashboard            LINE                   Edge Function line-auth    
                                                    create/find auth user ─────────▶ auth.users
                                                    (app_metadata.line_sub = LINE id)
   setSession(access, refresh) ◀─────────────────── session
-First login only: "Selamat datang!" modal
-  • "Saya customer baru"  → rpc register_customer() ───────────────────────────────▶ new customers row
-  • "Punya kode dari admin" → rpc link_customer(code) ─────────────────────────────▶ links existing row
+First login only (automatic):
+  rpc register_customer() ─────────────────────────────────────────────────────────▶ new customers row
+                                                                                     (name = LINE display name)
 ```
 
 - The LINE user id (`sub`) never changes for one LINE provider, so later
@@ -49,15 +49,17 @@ First login only: "Selamat datang!" modal
 | File | Purpose |
 |---|---|
 | `supabase/functions/line-auth/index.ts` | Edge Function: code → tokens → verify → Supabase session |
-| `supabase/migrations/0003_line_claim_code.sql` | `customers.claim_code`, `generate_claim_code`, `generate_missing_claim_codes`, `link_customer` |
+| `supabase/migrations/0003_line_claim_code.sql` | Claim codes for admin-created customers (removed by 0007) |
 | `supabase/migrations/0004_line_self_register.sql` | `register_customer` (new customer from LINE display name) |
-| `supabase/migrations/0005_line_edge_function.sql` | Both functions read the LINE id from `app_metadata.line_sub` |
+| `supabase/migrations/0005_line_edge_function.sql` | `register_customer` reads the LINE id from `app_metadata.line_sub` |
+| `supabase/migrations/0007_remove_claim_code.sql` | Drops the claim-code functions and `customers.claim_code` |
+| `supabase/scripts/cleanup_*.sql` | One-off: delete non-LINE customers with their items, bills, notifications, batches/boxes holding only their items, and non-LINE non-admin auth users |
 | `customer/src/lib/lineLogin.ts` | Start login (PKCE/state/nonce), finish login on callback |
 | `customer/src/pages/LineCallback.tsx` | `/id/line-callback` route |
 | `customer/src/auth.ts` | Session + linked-customer state |
-| `customer/src/components/Layout.tsx` | Login modal, "Selamat datang!" modal, header |
+| `customer/src/components/Layout.tsx` | Login modal, header ("Buat profil" retry if registering failed) |
 
-No new tables. Only a `claim_code` column on `customers`.
+No new tables. All customers sign up with LINE; there are no admin-created customers.
 
 ## Setup checklist
 
@@ -71,7 +73,8 @@ No new tables. Only a `claim_code` column on `customers`.
 
 ### Supabase (project GO-DEUNOTEU)
 
-- [ ] SQL Editor: run migrations `0002` … `0006` in order
+- [x] SQL Editor: migrations `0002` … `0006`
+- [ ] SQL Editor: migration `0007` (remove claim codes)
 - [x] Edge Functions → deploy `line-auth` with the contents of `supabase/functions/line-auth/index.ts`
 - [ ] Edge Functions → `line-auth` → **Verify JWT: OFF**
 - [ ] Edge Functions → **Secrets**: `LINE_CHANNEL_ID` = `2012779435`,
@@ -86,19 +89,6 @@ No new tables. Only a `claim_code` column on `customers`.
   (the customer app reads it via `envDir: '..'`). Never put the channel secret here.
 - Run the customer app on port 5174 so the callback URL matches:
   `cd customer && npm run dev -- --port 5174`
-
-## Customer codes (existing customers)
-
-Customers Admin GO created before LINE Login need a one-time code so their
-orders stay attached to them. In the SQL Editor:
-
-```sql
-select generate_missing_claim_codes();
-select name, claim_code from customers where auth_user_id is null;
-```
-
-Send each customer their code over LINE chat. A code works once, then is
-cleared. New customers don't need a code ("Saya customer baru, buat profil").
 
 ## Troubleshooting
 

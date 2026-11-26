@@ -30,12 +30,16 @@ cd customer && npm install && npm run dev -- --port 5174     # customer → :517
 - Migrations in `supabase/migrations/`, run **by hand in the SQL Editor**, in order:
   - `0001_init`: schema, RLS, RPCs, storage
   - `0002`: `items.description`
-  - `0003`: `customers.claim_code`, `link_customer`
+  - `0003`: claim codes (removed again by `0007`)
   - `0004`: `register_customer`
   - `0005`: LINE id read from `app_metadata.line_sub`
   - `0006`: `my_batch_members()`
+  - `0007`: drops the claim-code functions and `customers.claim_code`
 
-  All six are applied on the live project.
+  0001–0006 are applied on the live project. 0007 must still be run by the user.
+- One-off data scripts (not migrations) live in `supabase/scripts/`. `cleanup_1_preview.sql`
+  and `cleanup_2_delete.sql` remove every non-LINE customer with all their data (items, bills,
+  notifications, batches/boxes holding only their items) and every non-LINE, non-admin auth user.
 - Edge Function `supabase/functions/line-auth/index.ts`: deployed. Verify JWT is OFF.
   Secrets `LINE_CHANNEL_ID` and `LINE_CHANNEL_SECRET` are set in Supabase.
 - RLS: admin = full access via `is_admin()`. A customer reads only their own rows
@@ -51,10 +55,9 @@ cd customer && npm install && npm run dev -- --port 5174     # customer → :517
      creates or finds the auth user (placeholder email `line_<sub>@line-login.invalid`,
      `app_metadata.line_sub`), and returns a session.
    - The client calls `supabase.auth.setSession`.
-2. **First login.** The "Selamat datang!" modal offers two choices:
-   - "Saya customer baru": `register_customer()` creates a `customers` row named after the LINE display name.
-   - "Punya kode dari admin": `link_customer(code)` links an existing row. Admin generates codes in SQL:
-     `select generate_missing_claim_codes(); select name, claim_code from customers where auth_user_id is null;`
+2. **First login.** `register_customer()` creates the `customers` row automatically,
+   named after the LINE display name. No modal and no admin code: every customer
+   signs up with LINE. The claim-code flow was removed in `0007`.
 3. **Data.** `customer/src/store.ts` runs in `MODE = 'remote'` when Supabase and the LINE channel id are set.
    - `customer/src/lib/remote.ts` loads the customer's boxes, batches, items, bills, notifications and estimator config.
    - Paying uploads the proof to `bukti-transfer/<customer_id>/…` and then calls `submit_payment_proof`.

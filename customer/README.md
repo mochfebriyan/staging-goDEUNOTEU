@@ -36,8 +36,8 @@ Edge Function (`../supabase/functions/line-auth/index.ts`):
 1. "Lanjut dengan LINE" → LINE authorize page (PKCE, state, nonce).
 2. LINE → `/id/line-callback?code=…` → `line-auth` exchanges and verifies
    it with LINE, creates/finds the Supabase user, returns a session.
-3. First login: "Saya customer baru" (`register_customer`) or a one-time
-   code from Admin GO (`link_customer`). Migrations 0003–0005.
+3. First login creates the customer profile from the LINE display name
+   (`register_customer`).
 
 Setup: LINE console → LINE Login → Callback URL lists
 `http://localhost:5174/id/line-callback` (and the deployed URL); Edge

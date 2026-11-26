@@ -96,9 +96,9 @@ export function Layout({ children }: { children: ReactNode }) {
                   Keluar
                 </button>
               </>
-            ) : auth.status === 'needsCode' ? (
-              <button type="button" onClick={() => useClaimModal.setState({ open: true })} className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700">
-                Lengkapi profil
+            ) : auth.status === 'needsProfile' ? (
+              <button type="button" onClick={() => auth.register()} className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700">
+                Buat profil
               </button>
             ) : customer ? (
               <>
@@ -154,7 +154,6 @@ export function Layout({ children }: { children: ReactNode }) {
       </nav>
 
       <LoginModal key={customerId ?? 'out'} />
-      <ClaimCodeModal />
       <Toaster />
     </div>
   )
@@ -234,97 +233,6 @@ function LoginModal() {
       <p className="mt-4 text-center text-xs text-slate-500">Belum pernah join GO? Masuk dengan LINE, profil kamu langsung dibuat.</p>
       <button type="button" onClick={hide} className={`${secondaryButton} mt-3 w-full`}>
         Lihat-lihat dulu
-      </button>
-    </Modal>
-  )
-}
-
-// First LINE login: the account isn't linked to a customer yet. New
-// customers create their profile from their LINE display name; customers
-// Admin GO already recorded enter the one-time code from the admin instead,
-// so their existing orders stay theirs. Opens by itself once.
-export const useClaimModal = create<{ open: boolean }>(() => ({ open: true }))
-
-function ClaimCodeModal() {
-  const status = useAuth((a) => a.status)
-  const lineName = useAuth((a) => a.lineName)
-  const linePicture = useAuth((a) => a.linePicture)
-  const claim = useAuth((a) => a.claim)
-  const register = useAuth((a) => a.register)
-  const signOut = useAuth((a) => a.signOut)
-  const open = useClaimModal((m) => m.open)
-  const pushToast = useStore((s) => s.pushToast)
-  const [mode, setMode] = useState<'choose' | 'code'>('choose')
-  const [code, setCode] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  if (status !== 'needsCode' || !open) return null
-  const close = () => useClaimModal.setState({ open: false })
-
-  const run = async (action: () => Promise<string | null>, success: string) => {
-    setBusy(true)
-    setError(null)
-    const err = await action()
-    setBusy(false)
-    if (err) setError(err)
-    else pushToast(success, 'success')
-  }
-
-  return (
-    <Modal title="Selamat datang!" onClose={close}>
-      <div className="flex items-center gap-3">
-        <Avatar name={lineName ?? 'LINE'} src={linePicture ?? undefined} size={40} />
-        <p className="text-sm text-slate-600">
-          Halo{lineName ? <>, <span className="font-semibold text-slate-900">{lineName}</span></> : ''}! Kamu baru pertama kali masuk.
-        </p>
-      </div>
-
-      {mode === 'choose' ? (
-        <div className="mt-5 flex flex-col gap-3">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => run(register, 'Profil kamu sudah dibuat.')}
-            className={`${primaryButton} w-full`}
-          >
-            {busy ? 'Membuat profil…' : 'Saya customer baru, buat profil'}
-          </button>
-          <p className="-mt-1 text-center text-xs text-slate-500">Nama profil diambil dari nama LINE kamu.</p>
-          <button type="button" disabled={busy} onClick={() => setMode('code')} className={`${secondaryButton} w-full`}>
-            Saya sudah pernah order (punya kode dari admin)
-          </button>
-        </div>
-      ) : (
-        <form
-          className="mt-5 flex flex-col gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            run(() => claim(code), 'Akun LINE kamu sudah tersambung.')
-          }}
-        >
-          <label htmlFor="claim-code" className="text-sm font-medium text-slate-700">
-            Kode customer dari admin
-          </label>
-          <input
-            id="claim-code"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder="GO-XXXX-XXXX"
-            autoComplete="off"
-            className="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm tracking-wider uppercase"
-          />
-          <button type="submit" disabled={busy || code.trim().length < 6} className={primaryButton}>
-            {busy ? 'Menyambungkan…' : 'Sambungkan'}
-          </button>
-          <button type="button" onClick={() => { setMode('choose'); setError(null) }} className="text-xs text-slate-500 underline">
-            Kembali
-          </button>
-        </form>
-      )}
-      {error && <p className="mt-2 text-center text-xs text-rose-600">{error}</p>}
-
-      <button type="button" onClick={signOut} className="mt-5 w-full text-center text-xs text-slate-400 underline hover:text-slate-600">
-        Keluar dari LINE
       </button>
     </Modal>
   )

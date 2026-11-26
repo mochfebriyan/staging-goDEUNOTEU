@@ -26,22 +26,25 @@ Admin uses HashRouter (`/#/orders`), so it needs no `vercel.json`.
 
 ## 2. Customer Dashboard: Vercel project #2
 
-- [ ] Vercel → Add New → Project → import the **same** repo
-- [ ] **Root Directory**: `customer` · Framework: **Vite**
+- [x] Vercel → Add New → Project → import the **same** repo
+- [x] **Root Directory**: `customer` · Framework: **Vite**
       · Production branch: `customer-dashboard` (or `main` after merging)
 - [ ] Environment Variables (Production + Preview):
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_ANON_KEY`
-  - `VITE_LINE_CHANNEL_ID` = `2012779435`
+  - [x] `VITE_SUPABASE_URL` (found in the deployed bundle)
+  - [?] `VITE_SUPABASE_ANON_KEY`
+  - [ ] `VITE_LINE_CHANNEL_ID` = `2012779435`: **missing on 2026-11-26**, so the site
+        runs in demo mode and the LINE button is disabled
 
   The `.env` file is gitignored and never reaches Vercel. Vite reads these
   `VITE_*` variables from the build environment even though the app uses
-  `envDir: '..'`.
-- [ ] Deploy. Write the URL here: `https://______________` (this is `<customer-domain>` below)
+  `envDir: '..'`. Vite bakes them in at build time, so after adding or
+  changing one: Deployments → latest → **Redeploy**.
+- [x] Deployed: **https://staging-godeunoteu-customer.vercel.app** (this is `<customer-domain>` below)
+- [ ] After redeploy, check: no "Mode demo" badge, and "Lanjut dengan LINE" is clickable
 
 ## 3. LINE Developers Console (channel 2012779435)
 
-- [ ] **LINE Login → Callback URL**: add `https://<customer-domain>/id/line-callback`.
+- [ ] **LINE Login → Callback URL**: add `https://staging-godeunoteu-customer.vercel.app/id/line-callback`.
       Keep `http://localhost:5174/id/line-callback` for local development.
 - [ ] **Publish** the channel. While it is *Developing*, only accounts under
       **Roles** can log in, and real customers get an error from LINE.
@@ -50,6 +53,7 @@ Admin uses HashRouter (`/#/orders`), so it needs no `vercel.json`.
 
 - [x] Edge Function `line-auth` deployed, Verify JWT OFF, secrets `LINE_CHANNEL_ID` and `LINE_CHANNEL_SECRET` set
 - [x] Migrations 0001–0006 applied
+- [ ] Migration 0007 (remove claim codes)
 - [ ] (Recommended) In `supabase/functions/line-auth/index.ts`, set
       `'Access-Control-Allow-Origin'` to `https://<customer-domain>` instead of `*`, then redeploy:
       `npx supabase functions deploy line-auth --no-verify-jwt --project-ref llywvxiknmqtvgxteqye`
@@ -61,7 +65,7 @@ Admin uses HashRouter (`/#/orders`), so it needs no `vercel.json`.
 
 ## 5. Smoke test on production
 
-- [ ] Customer domain → Masuk → Lanjut dengan LINE → "Selamat datang!" → profile created
+- [ ] Customer domain → Masuk → Lanjut dengan LINE → toast "Selamat datang! Profil kamu sudah dibuat."
 - [ ] Admin domain: add an item for that customer in a batch. The customer sees the bill and a notification.
 - [ ] Customer uploads a proof → admin confirms → the bill shows **Lunas** with a notification
 

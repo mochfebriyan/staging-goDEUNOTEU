@@ -4,17 +4,16 @@ import { startLineLogin } from './lib/lineLogin'
 import { LINE_CHANNEL_ID, supabase } from './lib/supabase'
 import { useStore } from './store'
 
-// LINE Login (via the `line-auth` Edge Function, see lib/lineLogin.ts) and
-// linking the LINE account to a customers row: a new customer registers
-// (register_customer), a customer Admin GO already created enters a one-time
-// code (link_customer). See supabase/migrations/0003–0005.
+// LINE Login (via the `line-auth` Edge Function, see lib/lineLogin.ts). Every
+// customer signs up with LINE: on the first login a customers row is created
+// from the LINE display name (register_customer, migrations 0004/0005).
 //
 // status:
-//   disabled  – Supabase or VITE_LINE_CHANNEL_ID missing in .env; demo login only
-//   loading   – checking the session
-//   signedOut – not signed in with LINE
-//   needsCode – signed in with LINE, not linked to a customer yet
-//   linked    – signed in and linked; `customer` is set
+//   disabled     – Supabase or VITE_LINE_CHANNEL_ID missing in .env; demo login only
+//   loading      – checking the session / creating the profile
+//   signedOut    – not signed in with LINE
+//   needsProfile – signed in, but creating the profile failed; retry with register()
+//   linked       – signed in with a customers row; `customer` is set
 
 export interface LinkedCustomer {
   id: string
@@ -23,13 +22,12 @@ export interface LinkedCustomer {
 }
 
 interface AuthState {
-  status: 'disabled' | 'loading' | 'signedOut' | 'needsCode' | 'linked'
+  status: 'disabled' | 'loading' | 'signedOut' | 'needsProfile' | 'linked'
   session: Session | null
   customer: LinkedCustomer | null
   lineName: string | null
   linePicture: string | null
   signInWithLine: () => Promise<string | null>
-  claim: (code: string) => Promise<string | null>
   register: () => Promise<string | null>
   signOut: () => Promise<void>
 }
@@ -48,6 +46,10 @@ function lineProfile(session: Session) {
 type CustomerRow = { id: string; name: string; avatar_url: string | null }
 const toCustomer = (c: CustomerRow): LinkedCustomer => ({ id: c.id, name: c.name, avatarUrl: c.avatar_url })
 
+// One register call at a time: refresh() can run twice on login (getSession
+// + SIGNED_IN), and customers.auth_user_id is unique.
+let registering: Promise<string | null> | null = null
+
 export const useAuth = create<AuthState>()((set) => ({
   status: enabled ? 'loading' : 'disabled',
   session: null,
@@ -57,22 +59,25 @@ export const useAuth = create<AuthState>()((set) => ({
 
   signInWithLine: () => startLineLogin(),
 
-  // Existing customer: one-time code from Admin GO (0003 / 0005).
-  claim: async (code) => {
-    if (!supabase) return 'LINE Login belum dikonfigurasi.'
-    const { data, error } = await supabase.rpc('link_customer', { p_code: code })
-    if (error) return error.message
-    set({ status: 'linked', customer: toCustomer(data as CustomerRow) })
-    return null
-  },
-
-  // New customer: profile from the LINE display name (0004 / 0005).
-  register: async () => {
-    if (!supabase) return 'LINE Login belum dikonfigurasi.'
-    const { data, error } = await supabase.rpc('register_customer')
-    if (error) return error.message
-    set({ status: 'linked', customer: toCustomer(data as CustomerRow) })
-    return null
+  // Creates (or returns the existing) customers row for this LINE account.
+  register: () => {
+    if (!supabase) return Promise.resolve('LINE Login belum dikonfigurasi.')
+    const client = supabase
+    registering ??= (async () => {
+      set({ status: 'loading' })
+      const { data, error } = await client.rpc('register_customer')
+      if (error) {
+        set({ status: 'needsProfile' })
+        useStore.getState().pushToast(`Gagal membuat profil: ${error.message}`, 'error')
+        return error.message
+      }
+      set({ status: 'linked', customer: toCustomer(data as CustomerRow) })
+      useStore.getState().pushToast('Selamat datang! Profil kamu sudah dibuat.', 'success')
+      return null
+    })().finally(() => {
+      registering = null
+    })
+    return registering
   },
 
   signOut: async () => {
@@ -81,7 +86,8 @@ export const useAuth = create<AuthState>()((set) => ({
   },
 }))
 
-// Looks up the customer row linked to this auth user (RLS: "customer reads self").
+// Looks up the customer row for this auth user (RLS: "customer reads self");
+// creates it on the first login.
 async function refresh(session: Session | null) {
   if (!supabase) return
   if (!session) {
@@ -95,11 +101,15 @@ async function refresh(session: Session | null) {
     .eq('auth_user_id', session.user.id)
     .maybeSingle()
   if (error) {
-    // Don't ask a possibly-linked customer to register again on a network error.
+    // Don't create a second profile on a network error.
     console.error('Gagal memuat customer:', error.message)
     return
   }
-  useAuth.setState(data ? { status: 'linked', customer: toCustomer(data) } : { status: 'needsCode', customer: null })
+  if (data) {
+    useAuth.setState({ status: 'linked', customer: toCustomer(data) })
+    return
+  }
+  await useAuth.getState().register()
 }
 
 if (supabase && LINE_CHANNEL_ID) {

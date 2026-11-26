@@ -314,12 +314,21 @@ function ProfileTab() {
   const customer = s.customers.find((c) => c.id === s.customerId)
   const auth = useAuth()
 
-  if (!customer && (auth.status === 'loading' || auth.status === 'needsCode')) {
+  if (!customer && (auth.status === 'loading' || auth.status === 'needsProfile')) {
     return (
       <div className="mx-auto flex max-w-md flex-col gap-6">
         <PageHeader title="Profil" />
         <Card className="text-center text-sm text-slate-600">
-          {auth.status === 'loading' ? 'Memuat akun…' : 'Lengkapi profil kamu dulu lewat tombol "Lengkapi profil" di atas.'}
+          {auth.status === 'loading' ? (
+            'Memuat akun…'
+          ) : (
+            <>
+              Profil kamu belum berhasil dibuat.
+              <button type="button" onClick={() => auth.register()} className={`${primaryButton} mt-3 w-full`}>
+                Coba lagi
+              </button>
+            </>
+          )}
         </Card>
       </div>
     )
